@@ -169,7 +169,7 @@ def coleta_endpoint():
         }
 
         if acao == "finalizar":
-            url = "https://api-pesagem-chi.vercel.app/peso-caixa"
+            url = "http://10.42.0.1:5002/peso-caixa"
             try:
                 requests.post(url, json=payload, timeout=5)
             except requests.RequestException:
