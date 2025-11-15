@@ -1,1 +1,6 @@
-{"offset": 0.0, "ultimo_peso": 0, "coleta_status": "inativa", "reference_unit": 1037.2044444444443}
+{
+    "offset": 0.0,
+    "ultimo_peso": 0,
+    "coleta_status": "inativa",
+    "reference_unit": 0.0
+}

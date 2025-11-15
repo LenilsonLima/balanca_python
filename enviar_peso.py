@@ -100,7 +100,7 @@ while True:
 
         # Envia para API
         payload = {"peso_atual": peso, "identificador_balanca": IDENTIFICADOR_BALANCA}
-        url = "https://api-pesagem-chi.vercel.app/peso-caixa"
+        url = "http://10.42.0.1:5002/peso-caixa".
         try:
             response = requests.post(url, json=payload)
             print(f"[INFO] Peso enviado: {peso}g | Status: {response.status_code}")

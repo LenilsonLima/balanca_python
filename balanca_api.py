@@ -11,9 +11,10 @@ app = Flask(__name__)
 # Caminho do arquivo de configuração
 PARAMETROS_BALANCA_PATH = "/home/pi/Desktop/balanca/parametros_balanca.json"
 
+# ================================
 # FUNÇÕES AUXILIARES
+# ================================
 
-# Lê o arquivo JSON da balança, criando se não existir
 def carregar_dados():
     if not os.path.exists(PARAMETROS_BALANCA_PATH):
         dados_iniciais = {
@@ -25,15 +26,14 @@ def carregar_dados():
         with open(PARAMETROS_BALANCA_PATH, "w") as f:
             json.dump(dados_iniciais, f, indent=4)
         return dados_iniciais
+    
     with open(PARAMETROS_BALANCA_PATH, "r") as f:
         return json.load(f)
-
 
 def salvar_dados(dados):
     with open(PARAMETROS_BALANCA_PATH, "w") as f:
         json.dump(dados, f, indent=4)
 
-# Obtém o número de série do Raspberry Pi
 def get_raspberry_serial():
     try:
         serial = subprocess.check_output(
@@ -43,16 +43,25 @@ def get_raspberry_serial():
     except Exception:
         return "serial_desconhecido"
 
-
 IDENTIFICADOR_BALANCA = get_raspberry_serial()
-#  Identificador da balança
 
+# ================================
 # ROTAS
+# ================================
+
 @app.route("/")
 def home():
-    return jsonify({"status": "ok", "mensagem": "API da balança ativa"})
+    return jsonify({
+        "retorno": {
+            "status": 200,
+            "mensagem": "API da balança ativa"
+        },
+        "registros": []
+    })
 
-# Realiza tara e salva o offset
+# ---------------------------------
+# TARA
+# ---------------------------------
 @app.route("/tarar-balanca", methods=["GET"])
 def tarar_balanca():
     hx = HX711(5, 6)
@@ -66,19 +75,30 @@ def tarar_balanca():
     salvar_dados(dados)
 
     return jsonify({
-        "status": "sucesso",
-        "mensagem": "Tara realizada com sucesso",
-        "offset": offset
+        "retorno": {
+            "status": 200,
+            "mensagem": "Tara realizada com sucesso"
+        },
+        "registros": []
     })
 
-# Calcula automaticamente o reference_unit a partir de um peso conhecido
+# ---------------------------------
+# CALIBRAR REFERENCE_UNIT
+# ---------------------------------
 @app.route("/calibrar-reference", methods=["POST"])
 def calibrar_reference():
     try:
         data = request.get_json()
         peso_conhecido = float(data.get("peso_conhecido", 0))
+
         if peso_conhecido <= 0:
-            return jsonify({"status": "erro", "mensagem": "Informe um peso válido (> 0)"}), 400
+            return jsonify({
+                "retorno": {
+                    "status": 400,
+                    "mensagem": "Informe um peso válido (> 0)"
+                },
+                "registros": []
+            }), 400
 
         dados = carregar_dados()
         offset = dados.get("offset", 0)
@@ -86,7 +106,6 @@ def calibrar_reference():
         hx = HX711(5, 6)
         hx.set_offset(offset)
 
-        # Ler o valor bruto com peso sobre a balança
         leituras = [hx.read_long() for _ in range(10)]
         media_crua = sum(leituras) / len(leituras)
 
@@ -95,50 +114,36 @@ def calibrar_reference():
         salvar_dados(dados)
 
         return jsonify({
-            "status": "sucesso",
-            "mensagem": "Reference unit calibrado e salvo com sucesso",
-            "reference_unit": reference_unit,
-            "offset": offset
+            "retorno": {
+                "status": 200,
+                "mensagem": "Unidade de referência calibrada e salva com sucesso"
+            },
+            "registros": []
         }), 200
 
     except Exception as e:
-        # Erro na calibração
-        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+        return jsonify({
+            "retorno": {
+                "status": 500,
+                "mensagem": str(e)
+            },
+            "registros": []
+        }), 500
 
-# Lê o peso atual usando o reference_unit calibrado
-@app.route("/teste-peso", methods=["GET"])
-def teste_peso():
-    dados = carregar_dados()
-    reference_unit = dados.get("reference_unit")
-    offset = dados.get("offset", 0)
-
-    if not reference_unit:
-        return jsonify({"status": "erro", "mensagem": "Reference unit não calibrado ainda"}), 400
-
-    hx = HX711(5, 6)
-    hx.set_reference_unit(reference_unit)
-    hx.set_offset(offset)
-
-    peso = max(0, int(hx.get_weight(5)))
-
-    return jsonify({
-        "status": "sucesso",
-        "peso": peso,
-        "reference_unit": reference_unit,
-        "offset": offset
-    })
-
-
+# ---------------------------------
 # COLETA DE PESAGEM
-
-# Inicia ou finaliza uma coleta e envia o peso para a API
+# ---------------------------------
 @app.route('/coleta-balanca', methods=['GET'])
 def coleta_endpoint():
     try:
         acao = request.args.get("acao")
         if acao not in ["iniciar", "finalizar"]:
             return jsonify({
-                "retorno": {"status": 400, "mensagem": "Parâmetro 'acao' inválido"}
+                "retorno": {
+                    "status": 400,
+                    "mensagem": "Parâmetro 'acao' inválido"
+                },
+                "registros": []
             }), 400
 
         dados = carregar_dados()
@@ -154,7 +159,6 @@ def coleta_endpoint():
 
         if acao == "iniciar":
             dados["coleta_status"] = "ativa"
-            # Coleta iniciada
 
         salvar_dados(dados)
 
@@ -167,30 +171,23 @@ def coleta_endpoint():
         if acao == "finalizar":
             url = "https://api-pesagem-chi.vercel.app/peso-caixa"
             try:
-                response = requests.post(url, json=payload, timeout=5)
-                # Envio para servidor
-                dados["coleta_status"] = "inativa"
-                salvar_dados(dados)
-                # Coleta finalizada
-
-            except requests.RequestException as e:
-                # Falha ao enviar para API
-                dados["coleta_status"] = "inativa"
-                salvar_dados(dados)
-                # Coleta finalizada (com erro no envio)
+                requests.post(url, json=payload, timeout=5)
+            except requests.RequestException:
+                pass
+            
+            dados["coleta_status"] = "inativa"
+            salvar_dados(dados)
 
         return jsonify(payload), 200
 
-    except Exception as e:
-        # Erro na coleta
+    except Exception:
         return jsonify({
             "retorno": {
                 "status": 500,
-                "mensagem": "Falha ao processar coleta",
-                "erro": str(e)
-            }
+                "mensagem": "Falha ao processar coleta"
+            },
+            "registros": []
         }), 500
-
 
 # MAIN
 if __name__ == "__main__":
