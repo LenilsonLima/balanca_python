@@ -1,0 +1,14 @@
+[Unit]
+Description=Envio de peso da balança
+After=network.target balanca_api.service
+
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/Desktop/balanca/enviar_peso.py
+WorkingDirectory=/home/pi/Desktop/balanca
+Restart=always
+User=pi
+StandardOutput=inherit
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

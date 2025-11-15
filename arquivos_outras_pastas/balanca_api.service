@@ -1,0 +1,14 @@
+[Unit]
+Description=API da balança
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/Desktop/balanca/balanca_api.py
+WorkingDirectory=/home/pi/Desktop/balanca
+Restart=always
+User=pi
+StandardOutput=inherit
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

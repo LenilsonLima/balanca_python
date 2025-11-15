@@ -1,0 +1,33 @@
+Salvar o arquivo do serviço
+Abra o terminal no Raspberry Pi.
+
+Crie o arquivo de serviço (como root ou usando sudo):
+    sudo nano /etc/systemd/system/enviar_peso.service
+
+Cole o conteúdo do seu serviço (com os comentários se quiser) e salve (Ctrl+O, Enter, Ctrl+X).
+
+Recarregar o systemd
+Depois de criar ou editar um serviço, sempre recarregue o systemd para reconhecer o novo arquivo:
+    sudo systemctl daemon-reload
+
+Habilitar o serviço no boot
+Para que ele inicie automaticamente quando o Raspberry Pi ligar:
+    sudo systemctl enable enviar_peso.service
+
+Iniciar o serviço manualmente
+Para testar imediatamente sem reiniciar:
+    sudo systemctl start enviar_peso.service
+
+Verificar o status do serviço
+Para conferir se está rodando corretamente e ver logs recentes:
+    sudo systemctl status enviar_peso.service
+
+Ver logs do serviço
+Para acompanhar os prints e respostas do seu script:
+    journalctl -u enviar_peso.service -f
+
+Parar ou reiniciar o serviço
+Parar:
+    sudo systemctl stop enviar_peso.service
+Reiniciar:
+    sudo systemctl restart enviar_peso.service
