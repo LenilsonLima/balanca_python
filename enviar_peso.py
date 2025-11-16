@@ -5,9 +5,8 @@ import subprocess
 import os
 import json
 
-# Caminhos
+# Caminho do arquivo de parâmetros
 PARAMETROS_BALANCA_PATH = "/home/pi/Desktop/balanca/parametros_balanca.json"
-TARA_FLAG_PATH = "/tmp/tarar_balanca.flag"
 
 # Função para obter o serial único do Raspberry Pi
 def get_raspberry_serial():
@@ -72,22 +71,6 @@ while True:
             print("[INFO] Coleta em andamento, envio de peso pausado.")
             time.sleep(5)
             continue
-
-        # Aplica tara se flag existir
-        if os.path.exists(TARA_FLAG_PATH):
-            print("[DEBUG] Flag de tara detectada. Realizando tara...")
-            hx.tare()
-            print("[DEBUG] Tara concluída.")
-            os.remove(TARA_FLAG_PATH)
-            print("[DEBUG] Flag removida.")
-
-            # Salva offset após tara
-            data["offset"] = hx.get_offset()
-            data["ultimo_peso"] = 0
-            data["coleta_status"] = "inativa"
-            with open(PARAMETROS_BALANCA_PATH, "w") as f:
-                json.dump(data, f)
-            print(f"[INFO] Offset salvo: {hx.get_offset()}")
 
         # Lê peso médio de 5 amostras
         peso = max(0, int(hx.get_weight(5)))
